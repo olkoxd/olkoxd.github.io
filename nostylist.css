@@ -1,0 +1,11 @@
+body {background-color: black; margin: 0px; padding: 0px;} 
+
+.logo {width: 384px;
+        height: 216px;
+        }
+
+.logodiv {margin: 0 auto; left: 50%; position: fixed; transform: translate(-50%);}
+
+.logobg {width:100%; background: black; padding: 10px;
+height: 216px;}
+
