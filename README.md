@@ -1,2 +1,2 @@
 # olkoxd.github.io
-idk idk idk
+random website
