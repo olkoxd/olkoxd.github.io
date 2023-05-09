@@ -2,12 +2,36 @@ body {background-image: url(gy.jpg) ; margin: 0px; padding: 0px; background-repe
         background-attachment: fixed;
         background-size: 100% 100%;} 
 
-.logo {width: 1080px;
-        height: 720px;
-        }
-
-.logodiv {margin: 0 auto; left: 50%; position: fixed; transform: translate(-50%,-50%);top: 50%;}
+.funny { 
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;
+}
 
 .logobg {width:100%; padding: 0px;
 height: 216px;}
 
+.video {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+        width: 50%;  
+        align-content: center;
+}
+
+.text {
+        margin: auto;
+        padding: 50px ;
+    text-align: center;
+        color: azure;
+        font-family: 'Comic Neue', cursive;
+        background-color: black;
+        
+}
+
+.textdiv {
+        margin-left:  25%;
+        margin-right: 25%;
+        
+}
