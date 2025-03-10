@@ -1,0 +1,414 @@
+<!DOCTYPE html>
+<html lang="sk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>kratominmynestea</title>
+    <link rel="icon" type="image/png" href="2.png">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            touch-action: manipulation;
+        }
+
+        #gameCanvas {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+            overflow: hidden;
+        }
+
+        #startScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(242, 0, 255, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+        }
+
+        #startText {
+            font-size: clamp(24px, 5vw, 48px);
+            color: white;
+            animation: blink 1s infinite;
+            cursor: pointer;
+        }
+
+        #scoreDisplay {
+            position: absolute;
+            top: 2%;
+            left: 2%;
+            font-size: clamp(24px, 4vw, 48px);
+            color: white;
+            display: flex;
+            align-items: center;
+            z-index: 5;
+            display: none;
+        }
+
+        #scoreText {
+            margin-right: clamp(10px, 2vw, 20px);
+        }
+
+        #scoreIcon {
+            width: clamp(40px, 8vw, 80px);
+            height: clamp(40px, 8vw, 80px);
+            margin-left: clamp(2px, 1vw, 5px);
+        }
+
+        #gameOverScreen, #winScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 15;
+        }
+
+        #gameOverImg, #winImg {
+            max-width: 50%;
+        }
+
+        #tryAgainBtn {
+            padding: clamp(8px, 2vw, 15px) clamp(15px, 3vw, 30px);
+            font-size: clamp(16px, 3vw, 24px);
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin-top: clamp(10px, 2vw, 20px);
+            animation: colorFlash 0.2s infinite;
+        }
+
+        #winText {
+            font-size: clamp(24px, 5vw, 48px);
+            color: white;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        @keyframes gradient {
+            0% { background-position: 0% 0%; }
+            50% { background-position: 100% 100%; }
+            100% { background-position: 0% 0%; }
+        }
+
+        @keyframes flash {
+            0% { opacity: 1; }
+            50% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        @keyframes colorFlash {
+            0% { background-color: hsl(0, 100%, 50%); }
+            20% { background-color: hsl(72, 100%, 50%); }
+            40% { background-color: hsl(144, 100%, 50%); }
+            60% { background-color: hsl(216, 100%, 50%); }
+            80% { background-color: hsl(288, 100%, 50%); }
+            100% { background-color: hsl(360, 100%, 50%); }
+        }
+    </style>
+</head>
+<body>
+    <div id="gameCanvas">
+        <div id="startScreen">
+            <span id="startText">GET GEEKED</span>
+        </div>
+        <div id="scoreDisplay">
+            <span id="scoreText">Geeked:</span> <span id="score">0</span>%
+            <img id="scoreIcon" src="1.png">
+        </div>
+        <div id="gameOverScreen">
+            <img id="gameOverImg" src="prehra.png">
+            <button id="tryAgainBtn">Get Geeked</button>
+        </div>
+        <div id="winScreen">
+            <img id="winImg" src="geek.png">
+            <span id="winText">You are geeked.</span>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        document.getElementById('gameCanvas').appendChild(canvas);
+
+        const playerImg = new Image();
+        playerImg.src = 'ice.png';
+        const obstacleImg = new Image();
+        obstacleImg.src = 'automat.png';
+        const birdImg = new Image();
+        birdImg.src = 'vtak.png';
+        const pointImg = new Image();
+        pointImg.src = 'kra.png';
+
+        // Definícia player pred updateDimensions
+        let player = {
+            x: 0, // Inicializácia, hodnoty sa nastavia v updateDimensions
+            y: 0,
+            width: 0,
+            height: 0,
+            dy: 0,
+            gravity: 0,
+            jump: 0,
+            grounded: true
+        };
+
+        function updateDimensions() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const groundHeight = canvas.height * 0.25;
+            const groundY = canvas.height - groundHeight;
+            const tileSize = canvas.width * 0.05;
+            const obstacleHeight = groundY - (canvas.height * 0.15);
+            const birdHeight = groundY - (canvas.height * 0.35);
+
+            player.width = canvas.width * 0.1;
+            player.height = canvas.height * 0.2;
+            player.x = canvas.width * 0.1;
+            player.y = groundY - player.height;
+            player.jump = -canvas.height * 0.04;
+            player.gravity = canvas.height * 0.002;
+
+            return { groundHeight, groundY, tileSize, obstacleHeight, birdHeight };
+        }
+
+        // Inicializácia rozmerov po definícii player
+        let { groundHeight, groundY, tileSize, obstacleHeight, birdHeight } = updateDimensions();
+
+        let obstacles = [];
+        let points = [];
+        let score = 0;
+        let gameStarted = false;
+        let gameOver = false;
+        let gameWon = false;
+        let flash = false;
+
+        const startScreen = document.getElementById('startScreen');
+        const startText = document.getElementById('startText');
+        const gameOverScreen = document.getElementById('gameOverScreen');
+        const winScreen = document.getElementById('winScreen');
+        const scoreDisplay = document.getElementById('scoreDisplay');
+        const scoreNumber = document.getElementById('score');
+        const scoreIcon = document.getElementById('scoreIcon');
+
+        // Spustenie hry kliknutím na "GET GEEKED"
+        startText.addEventListener('click', startGame);
+
+        // Reštart hry
+        document.getElementById('tryAgainBtn').addEventListener('click', resetGame);
+
+        function jump() {
+            if (player.grounded && gameStarted && !gameOver && !gameWon) {
+                player.dy = player.jump;
+                player.grounded = false;
+            }
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && gameStarted) {
+                jump();
+            }
+        });
+
+        document.addEventListener('pointerdown', (e) => {
+            if (e.target !== startText && gameStarted && (!gameOver || e.target !== document.getElementById('tryAgainBtn'))) {
+                e.preventDefault();
+                jump();
+            }
+        });
+
+        function startGame() {
+            gameStarted = true;
+            startScreen.style.display = 'none';
+            scoreDisplay.style.display = 'flex';
+            spawnObstacle();
+            spawnPoint();
+            gameLoop();
+        }
+
+        function resetGame() {
+            location.reload();
+        }
+
+        function spawnObstacle() {
+            if (!gameStarted || gameOver || gameWon) return;
+            const type = Math.random() < 0.5 ? 'obstacle' : 'bird';
+            obstacles.push({
+                x: canvas.width,
+                y: type === 'obstacle' ? obstacleHeight : birdHeight,
+                width: canvas.width * 0.08,
+                height: canvas.height * 0.15,
+                type: type
+            });
+            setTimeout(spawnObstacle, Math.random() * 1500 + 700);
+        }
+
+        function spawnPoint() {
+            if (!gameStarted || gameOver || gameWon) return;
+            const atBirdLevel = Math.random() < 0.5;
+            const newPoint = {
+                x: canvas.width,
+                y: atBirdLevel ? birdHeight : obstacleHeight,
+                width: canvas.width * 0.06,
+                height: canvas.height * 0.1,
+            };
+
+            const overlaps = obstacles.some(obs => 
+                Math.abs(obs.x - newPoint.x) < canvas.width * 0.15 && Math.abs(obs.y - newPoint.y) < canvas.height * 0.2
+            ) || points.some(pt => 
+                Math.abs(pt.x - newPoint.x) < canvas.width * 0.15 && Math.abs(pt.y - newPoint.y) < canvas.height * 0.2
+            );
+
+            if (!overlaps) points.push(newPoint);
+            setTimeout(spawnPoint, Math.random() * 2000 + 1000);
+        }
+
+        function update() {
+            if (!gameStarted || gameOver || gameWon) return;
+
+            player.dy += player.gravity;
+            player.y += player.dy;
+            if (player.y > groundY - player.height) {
+                player.y = groundY - player.height;
+                player.dy = 0;
+                player.grounded = true;
+            }
+
+            obstacles.forEach((obs, i) => {
+                obs.x -= canvas.width * 0.008;
+                if (obs.x + obs.width < 0) obstacles.splice(i, 1);
+
+                if (player.x < obs.x + obs.width && player.x + player.width > obs.x &&
+                    player.y < obs.y + obs.height && player.y + player.height > obs.y) {
+                    if (obs.type === 'bird' && !player.grounded) gameOver = true;
+                    else if (obs.type === 'obstacle' && player.grounded) gameOver = true;
+                }
+            });
+
+            points.forEach((pt, i) => {
+                pt.x -= canvas.width * 0.008;
+                if (pt.x + pt.width < 0) points.splice(i, 1);
+
+                if (player.x < pt.x + pt.width && player.x + player.width > pt.x &&
+                    player.y < pt.y + pt.height && player.y + player.height > pt.y) {
+                    points.splice(i, 1);
+                    score += 5;
+                    scoreNumber.textContent = score;
+
+                    if (score % 20 === 0 && score > 0) {
+                        flash = true;
+                        setTimeout(() => flash = false, 200);
+                    }
+                    if (score === 20) scoreIcon.src = '2.png';
+                    if (score === 80) scoreIcon.src = '3.png';
+                    if (score >= 100) gameWon = true;
+                }
+            });
+        }
+
+        function drawGround() {
+            ctx.fillStyle = '#800080';
+            ctx.fillRect(0, groundY, canvas.width, groundHeight);
+
+            for (let x = 0; x < canvas.width; x += tileSize) {
+                for (let y = groundY; y < canvas.height; y += tileSize) {
+                    ctx.fillStyle = Math.random() < 0.5 ? '#4B0082' : '#9932CC';
+                    ctx.fillRect(x, y, tileSize, tileSize);
+                }
+            }
+        }
+
+        function draw() {
+            canvas.style.background = 'linear-gradient(to bottom, red, orange, yellow, green, blue, indigo, violet)';
+            canvas.style.backgroundSize = '100% 200%';
+            canvas.style.animation = 'gradient 10s ease infinite';
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            if (flash) {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+
+            drawGround();
+            ctx.drawImage(playerImg, player.x, player.y, player.width, player.height);
+
+            obstacles.forEach(obs => {
+                ctx.drawImage(obs.type === 'obstacle' ? obstacleImg : birdImg, obs.x, obs.y, obs.width, obs.height);
+            });
+
+            points.forEach(pt => {
+                ctx.drawImage(pointImg, pt.x, pt.y, pt.width, pt.height);
+            });
+
+            if (gameOver) {
+                gameOverScreen.style.display = 'flex';
+                for (let i = 0; i < 5; i++) {
+                    setTimeout(() => {
+                        const soberText = document.createElement('span');
+                        soberText.textContent = 'You are sober';
+                        soberText.style.position = 'absolute';
+                        soberText.style.color = `hsl(${Math.random() * 360}, 100%, 50%)`;
+                        soberText.style.left = `${Math.random() * 80 + 10}%`;
+                        soberText.style.top = `${Math.random() * 80 + 10}%`;
+                        soberText.style.fontSize = `${Math.min(48, window.innerWidth * 0.05)}px`;
+                        soberText.style.animation = 'blink 0.5s infinite';
+                        gameOverScreen.appendChild(soberText);
+                        setTimeout(() => soberText.remove(), 1000);
+                    }, i * 200);
+                }
+            }
+
+            if (gameWon) {
+                winScreen.style.display = 'flex';
+                document.body.style.animation = 'flash 0.1s infinite';
+            }
+        }
+
+        function gameLoop() {
+            update();
+            draw();
+            if (!gameOver && !gameWon) requestAnimationFrame(gameLoop);
+        }
+
+        window.addEventListener('resize', () => {
+            const dims = updateDimensions();
+            groundHeight = dims.groundHeight;
+            groundY = dims.groundY;
+            tileSize = dims.tileSize;
+            obstacleHeight = dims.obstacleHeight;
+            birdHeight = dims.birdHeight;
+
+            obstacles.forEach(obs => {
+                obs.y = obs.type === 'obstacle' ? obstacleHeight : birdHeight;
+                obs.width = canvas.width * 0.08;
+                obs.height = canvas.height * 0.15;
+            });
+            points.forEach(pt => {
+                pt.y = pt.y === birdHeight ? birdHeight : obstacleHeight;
+                pt.width = canvas.width * 0.06;
+                pt.height = canvas.height * 0.1;
+            });
+        });
+    </script>
+</body>
+</html>
